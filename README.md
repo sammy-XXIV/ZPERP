@@ -18,17 +18,17 @@ What stays public: position direction, leverage, open/closed status, and the exi
 |---|---|
 | `contracts/PerpVault.sol` | Custody of cUSDT margin. Locks margin for positions, pulling any shortfall straight from the trader's wallet (one-step open, homomorphic `min`) |
 | `contracts/PerpEngine.sol` | Opens/closes positions, encrypted PnL settlement against Chainlink ETH/USD |
-| `contracts/LiquidationEngine.sol` | Permissioned keeper flow: keeper decrypts position values via the Zama KMS (ACL-granted), verifies health off-chain, executes liquidation on-chain with oracle-verified price |
-| `keeper/` | TypeScript liquidation bot — scans positions, decrypts via `@zama-fhe/sdk`, liquidates undercollateralized positions |
+| `contracts/LiquidationEngine.sol` | Trustless liquidation: keeper flags underwater positions (making their handles publicly decryptable), then anyone executes with KMS-signed cleartexts verified on-chain via `FHE.checkSignatures` — forged values revert |
+| `keeper/` | TypeScript liquidation bot — pre-checks health via private ACL decryption, flags, fetches the KMS public-decryption proof, executes. Runs on a GitHub Actions cron (`.github/workflows/keeper.yml`), no server needed |
 | `frontend/` | React + wagmi + `@zama-fhe/react-sdk` trading terminal with client-side encryption and KMS decryption |
 
 ## Deployed contracts (Sepolia)
 
 | Contract | Address |
 |---|---|
-| PerpVault | `0x0951B4BD8fE822d3f4449A072584F441c4856f06` |
-| PerpEngine | `0xc7C3c24677a018Be718E6cF56615A1Ade225Cb75` |
-| LiquidationEngine | `0xb691c42b9cc6b28b89436E9Da1C767c52085c3F7` |
+| PerpVault | `0x9EA7ae651A7BC2DEfCE2e61C96Ebac46b666bd24` |
+| PerpEngine | `0xF07a3979f6D222b58b2081530F07347d0f79be5c` |
+| LiquidationEngine | `0x115eb5Dbf37b1e45B3c6B0f8303A11D05Ddb07B7` |
 | cUSDT (ERC-7984) | `0x4E7B06D78965594eB5EF5414c357ca21E1554491` |
 | Chainlink ETH/USD | `0x694AA1769357215DE4FAC081bf1f309aDC325306` |
 
@@ -65,8 +65,12 @@ npm run dev
 6. Close — encrypted PnL settles on-chain into your vault margin; withdraw to your wallet
 7. Open a 50x position to watch the keeper liquidate it (margin ratio 2% < 5% maintenance)
 
+## Trust model
+
+- Liquidation values are verified on-chain: `executeLiquidation` accepts only KMS-signed cleartexts (`FHE.checkSignatures`), so no party can forge a liquidation — execution is permissionless and the executor earns the fee
+- Flagging (`requestLiquidation`) is keeper-permissioned by design: revealing a position's values is the sensitive action, and gating it prevents griefing healthy positions into disclosure. The keeper pre-checks health through its private ACL decryption before flagging
+
 ## Testnet simplifications
 
 - Profit is paid from the vault's pooled balance — no LP/funding-rate mechanism
-- The liquidation keeper's decrypted values are trusted (attestation); production would verify KMS decryption proofs on-chain
 - Insurance fund is a plain address

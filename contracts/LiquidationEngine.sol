@@ -8,17 +8,20 @@ import "./PerpVault.sol";
 import "./interfaces/IChainlinkOracle.sol";
 import "./libraries/PositionMath.sol";
 
-/// @dev Permissioned keeper liquidation engine.
+/// @dev Trustless liquidation via on-chain KMS proof verification.
 ///
 ///      Flow:
-///      1. Keeper calls requestLiquidation(positionId) — emits event with encrypted handles
-///      2. Off-chain: keeper reads decrypted margin/size/entryPrice via KMS gateway (ACL grants access)
-///      3. Keeper computes health off-chain using plaintext values
-///      4. If unhealthy: keeper calls executeLiquidation(positionId, decryptedValues, proof)
-///      5. Contract verifies proof, executes liquidation, pays keeper fee
-///
-///      For testnet simplicity: step 4 uses keeper-signed attestation (trusted keeper).
-///      Production upgrade: replace with on-chain KMS decryption callback verification.
+///      1. Keeper calls requestLiquidation(positionId) — marks the position's
+///         encrypted margin/size/entryPrice publicly decryptable. Permissioned:
+///         only the keeper can trigger the reveal, so healthy positions can't
+///         be griefed into disclosure. The keeper pre-checks health via its
+///         private ACL decryption before flagging.
+///      2. Off-chain: ANYONE fetches the public decryption + KMS proof via the
+///         Zama SDK (decryptPublicValues).
+///      3. ANYONE calls executeLiquidation with the cleartexts + proof.
+///         FHE.checkSignatures verifies the KMS signatures on-chain — forged
+///         values revert, and the health check runs against the oracle price.
+///         The caller earns the liquidation fee.
 contract LiquidationEngine is ZamaEthereumConfig {
     using PositionMath for *;
 
@@ -32,18 +35,18 @@ contract LiquidationEngine is ZamaEthereumConfig {
 
     uint256 public totalLiquidations;
 
-    // tracks positions pending liquidation to prevent double execution
     mapping(uint256 => bool) public pendingLiquidation;
     mapping(uint256 => bool) public liquidated;
 
     uint32 constant ORACLE_STALENESS = 7200 seconds;
 
     event LiquidationRequested(uint256 indexed positionId, address indexed requester);
-    event LiquidationExecuted(uint256 indexed positionId, address indexed keeper, uint64 keeperFee, uint64 insuranceFee);
+    event LiquidationExecuted(uint256 indexed positionId, address indexed executor, uint64 keeperFee, uint64 insuranceFee);
     event KeeperUpdated(address indexed newKeeper);
 
     error NotKeeper();
     error NotOwner();
+    error NotRequested();
     error AlreadyLiquidated();
     error AlreadyPending();
     error PositionHealthy();
@@ -69,48 +72,52 @@ contract LiquidationEngine is ZamaEthereumConfig {
         owner = msg.sender;
     }
 
-    /// @dev Step 1: Anyone can flag a position for liquidation review.
-    ///      Emits event so keeper knows to check this position via KMS gateway.
-    function requestLiquidation(uint256 positionId) external {
+    /// @dev Step 1: keeper flags a position — its encrypted values become
+    ///      publicly decryptable so any executor can obtain KMS-signed cleartexts.
+    function requestLiquidation(uint256 positionId) external onlyKeeper {
         if (liquidated[positionId]) revert AlreadyLiquidated();
         if (pendingLiquidation[positionId]) revert AlreadyPending();
 
-        (, , bool isOpen, , , ,) = engine.getPosition(positionId);
+        (, , bool isOpen, , euint64 margin, euint64 size, euint64 entryPrice) = engine.getPosition(positionId);
         if (!isOpen) revert PositionNotOpen();
 
         pendingLiquidation[positionId] = true;
 
+        FHE.makePubliclyDecryptable(margin);
+        FHE.makePubliclyDecryptable(size);
+        FHE.makePubliclyDecryptable(entryPrice);
+
         emit LiquidationRequested(positionId, msg.sender);
     }
 
-    /// @dev Step 3: Keeper executes liquidation after off-chain health check.
-    ///      Keeper provides decrypted values + current oracle price.
-    ///      Contract independently verifies price from oracle (can't fake that).
-    ///      Keeper attestation of decrypted values is trusted for testnet.
-    ///
-    ///      decryptedMargin: plaintext cUSDT margin (6 decimals)
-    ///      decryptedSize:   plaintext position size in cUSDT notional (6 decimals)
-    ///      decryptedEntryPrice: plaintext ETH price at entry (8 decimals)
+    /// @dev Step 3: anyone executes with KMS-signed cleartexts. Handle order is
+    ///      [margin, size, entryPrice] — must match the off-chain decryptPublicValues
+    ///      call. Cleartexts are abi.encode(uint64, uint64, uint64) in that order.
     function executeLiquidation(
         uint256 positionId,
-        uint64 decryptedMargin,
-        uint64 decryptedSize,
-        uint64 decryptedEntryPrice
-    ) external onlyKeeper {
+        bytes calldata abiEncodedCleartexts,
+        bytes calldata decryptionProof
+    ) external {
         if (liquidated[positionId]) revert AlreadyLiquidated();
+        if (!pendingLiquidation[positionId]) revert NotRequested();
 
-        (, , bool isOpen, address posOwner, , ,) = engine.getPosition(positionId);
+        (, bool isLong, bool isOpen, , euint64 margin, euint64 size, euint64 entryPrice) =
+            engine.getPosition(positionId);
         if (!isOpen) revert PositionNotOpen();
+
+        // verify the KMS public decryption proof on-chain — forged values revert
+        bytes32[] memory handles = new bytes32[](3);
+        handles[0] = FHE.toBytes32(margin);
+        handles[1] = FHE.toBytes32(size);
+        handles[2] = FHE.toBytes32(entryPrice);
+        FHE.checkSignatures(handles, abiEncodedCleartexts, decryptionProof);
+
+        (uint64 decryptedMargin, uint64 decryptedSize, uint64 decryptedEntryPrice) =
+            abi.decode(abiEncodedCleartexts, (uint64, uint64, uint64));
 
         uint64 currentPrice = _getPrice();
 
-        // verify position is actually underwater using plaintext values from keeper
-        int256 unrealizedPnl = PositionMath.pnl(
-            decryptedSize,
-            decryptedEntryPrice,
-            currentPrice,
-            _isLong(positionId)
-        );
+        int256 unrealizedPnl = PositionMath.pnl(decryptedSize, decryptedEntryPrice, currentPrice, isLong);
 
         uint256 effectiveMargin = unrealizedPnl >= 0
             ? uint256(decryptedMargin) + uint256(unrealizedPnl)
@@ -129,25 +136,24 @@ contract LiquidationEngine is ZamaEthereumConfig {
         uint64 insuranceFeeAmt = uint64(PositionMath.insuranceFee(decryptedSize, currentPrice));
 
         // delegate close to engine
-        engine.liquidatePosition(positionId, keeper);
+        engine.liquidatePosition(positionId, msg.sender);
 
-        // engine releases full margin to vault — now redistribute
-        // keeper fee: transfer from vault to keeper
+        // fee to whoever executed, insurance cut to the fund
         euint64 encKeeperFee = FHE.asEuint64(keeperFeeAmt);
         euint64 encInsuranceFee = FHE.asEuint64(insuranceFeeAmt);
 
         FHE.allowThis(encKeeperFee);
-        FHE.allow(encKeeperFee, keeper);
+        FHE.allow(encKeeperFee, msg.sender);
         FHE.allowThis(encInsuranceFee);
         FHE.allow(encInsuranceFee, insuranceFund);
         // vault computes on these handles — grant it access for this tx
         FHE.allowTransient(encKeeperFee, address(vault));
         FHE.allowTransient(encInsuranceFee, address(vault));
 
-        vault.releaseMargin(keeper, encKeeperFee);
+        vault.releaseMargin(msg.sender, encKeeperFee);
         vault.releaseMargin(insuranceFund, encInsuranceFee);
 
-        emit LiquidationExecuted(positionId, keeper, keeperFeeAmt, insuranceFeeAmt);
+        emit LiquidationExecuted(positionId, msg.sender, keeperFeeAmt, insuranceFeeAmt);
     }
 
     function updateKeeper(address newKeeper) external onlyOwner {
@@ -159,11 +165,6 @@ contract LiquidationEngine is ZamaEthereumConfig {
         (, int256 answer, , uint256 updatedAt, ) = oracle.latestRoundData();
         if (block.timestamp - updatedAt > ORACLE_STALENESS) revert StaleOracle();
         return uint64(uint256(answer));
-    }
-
-    function _isLong(uint256 positionId) internal view returns (bool) {
-        (, bool isLong, , , , ,) = engine.getPosition(positionId);
-        return isLong;
     }
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {

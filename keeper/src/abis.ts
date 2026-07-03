@@ -16,9 +16,9 @@ export const PERP_ENGINE_ABI = [
       { name: "isLong",      type: "bool" },
       { name: "isOpen",      type: "bool" },
       { name: "owner",       type: "address" },
-      { name: "margin",      type: "uint256" }, // euint64 handle returned as uint256
-      { name: "size",        type: "uint256" }, // euint64 handle
-      { name: "entryPrice",  type: "uint256" }, // euint64 handle
+      { name: "margin",      type: "bytes32" }, // euint64 handle
+      { name: "size",        type: "bytes32" }, // euint64 handle
+      { name: "entryPrice",  type: "bytes32" }, // euint64 handle
     ],
   },
 ] as const;
@@ -50,10 +50,9 @@ export const LIQUIDATION_ENGINE_ABI = [
     type: "function",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "positionId",          type: "uint256" },
-      { name: "decryptedMargin",     type: "uint64" },
-      { name: "decryptedSize",       type: "uint64" },
-      { name: "decryptedEntryPrice", type: "uint64" },
+      { name: "positionId",            type: "uint256" },
+      { name: "abiEncodedCleartexts",  type: "bytes" },
+      { name: "decryptionProof",       type: "bytes" },
     ],
     outputs: [],
   },

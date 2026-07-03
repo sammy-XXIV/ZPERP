@@ -1,6 +1,7 @@
 import {
   publicClient,
   walletClient,
+  sdk,
   PERP_ENGINE_ADDRESS,
   LIQUIDATION_ENGINE_ADDRESS,
   ORACLE_ADDRESS,
@@ -45,28 +46,46 @@ async function getPosition(id: bigint) {
   });
 }
 
-async function isAlreadyLiquidated(id: bigint): Promise<boolean> {
+async function readLiqFlag(fn: "liquidated" | "pendingLiquidation", id: bigint): Promise<boolean> {
   return await publicClient.readContract({
     address: LIQUIDATION_ENGINE_ADDRESS,
     abi: LIQUIDATION_ENGINE_ABI,
-    functionName: "liquidated",
+    functionName: fn,
     args: [id],
   });
 }
 
-async function executeLiquidation(
+// Trustless flow: flag on-chain (reveals handles), fetch KMS-signed public
+// decryption, execute with the proof — the contract verifies the signatures.
+async function liquidate(
   positionId: bigint,
-  margin: bigint,
-  size: bigint,
-  entryPrice: bigint
+  handles: [`0x${string}`, `0x${string}`, `0x${string}`],
+  alreadyPending: boolean,
 ) {
-  console.log(`[liquidate] executing position ${positionId}`);
+  if (!alreadyPending) {
+    console.log(`[liquidate] requesting liquidation of position ${positionId}`);
+    const reqHash = await walletClient.writeContract({
+      address: LIQUIDATION_ENGINE_ADDRESS,
+      abi: LIQUIDATION_ENGINE_ABI,
+      functionName: "requestLiquidation",
+      args: [positionId],
+      gas: 2_000_000n,
+      account,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: reqHash });
+  }
 
+  console.log(`[liquidate] fetching KMS public decryption + proof`);
+  const { abiEncodedClearValues, decryptionProof } =
+    await sdk.decryption.decryptPublicValues([...handles]);
+
+  console.log(`[liquidate] executing with on-chain proof verification`);
   const hash = await walletClient.writeContract({
     address: LIQUIDATION_ENGINE_ADDRESS,
     abi: LIQUIDATION_ENGINE_ABI,
     functionName: "executeLiquidation",
-    args: [positionId, margin, size, entryPrice],
+    args: [positionId, abiEncodedClearValues, decryptionProof],
+    gas: 5_000_000n,
     account,
   });
 
@@ -90,25 +109,26 @@ export async function scanAndLiquidate() {
 
   for (let id = 0n; id < scanUpTo; id++) {
     try {
-      const [leverage, isLong, isOpen, , marginHandle, sizeHandle, entryPriceHandle] =
+      const [, isLong, isOpen, , marginHandle, sizeHandle, entryPriceHandle] =
         await getPosition(id);
 
       // cheap plaintext checks first — skip before spending decrypt cost
       if (!isOpen) continue;
-      if (await isAlreadyLiquidated(id)) continue;
+      if (await readLiqFlag("liquidated", id)) continue;
 
-      // decrypt encrypted position values via KMS gateway
+      const pending = await readLiqFlag("pendingLiquidation", id);
+
+      // pre-check health via the keeper's private ACL decryption so healthy
+      // positions are never flagged (their values stay confidential)
       const { margin, size, entryPrice } = await decryptPositionValues(
-        marginHandle as `0x${string}`,
-        sizeHandle as `0x${string}`,
-        entryPriceHandle as `0x${string}`,
+        marginHandle, sizeHandle, entryPriceHandle,
       );
 
       const underwater = isUndercollateralized(margin, size, entryPrice, currentPrice, isLong);
 
-      if (underwater) {
-        console.log(`[scan] position ${id} is underwater — liquidating`);
-        await executeLiquidation(id, margin, size, entryPrice);
+      if (underwater || pending) {
+        console.log(`[scan] position ${id} is ${underwater ? "underwater" : "already flagged"} — liquidating`);
+        await liquidate(id, [marginHandle, sizeHandle, entryPriceHandle], pending);
       }
     } catch (err) {
       // log and continue — don't let one bad position stop the scan
