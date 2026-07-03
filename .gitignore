@@ -1,0 +1,25 @@
+# secrets — never commit (.env holds deployer/keeper private keys)
+.env
+keeper/.env
+frontend/.env
+
+# dependencies
+node_modules/
+**/node_modules/
+
+# build output
+artifacts/
+cache/
+types/
+fhevmTemp/
+frontend/dist/
+keeper/dist/
+out/
+
+# deployment noise (addresses live in README)
+deployments/**/solcInputs/
+deployments/**/.pendingTransactions
+
+# misc
+deploy-log.txt
+*.log
