@@ -89,7 +89,7 @@ export function buildCandles(rounds: OracleRound[], tfSec: number): Candle[] {
   for (const r of rounds) {
     const slot = Math.floor(r.updatedAt / tfSec) * tfSec;
     if (!cur || cur.time !== slot) {
-      const open = cur ? cur.close : r.price;
+      const open: number = cur ? cur.close : r.price;
       if (cur) candles.push(cur);
       cur = {
         time: slot,
