@@ -15,7 +15,7 @@ export function Header() {
 
   return (
     <header className="t-header">
-      <div className="t-logo">ZPERP</div>
+      <a className="t-logo" href="#/" style={{ textDecoration: "none", cursor: "pointer" }}>ZPERP</a>
 
       <div className="t-market">
         <span className="t-pair">ETH / USD</span>

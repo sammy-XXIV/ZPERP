@@ -657,3 +657,245 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
+
+/* ─── LANDING PAGE ────────────────────────────────────────────────── */
+.lp {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+.lp a { color: inherit; text-decoration: none; }
+.lp button { font-family: var(--font-mono); cursor: pointer; }
+.lp :focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+
+.lp-bar {
+  display: flex; align-items: center; gap: 20px;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  background: rgba(10, 11, 8, 0.92);
+  backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.lp-logo {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--acid);
+  letter-spacing: 0.04em;
+}
+.lp-bar-price {
+  margin-left: auto;
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+}
+.lp-bar-price strong { color: var(--text-primary); font-weight: 500; }
+.lp-bar-src { color: var(--text-dim); font-size: 0.52rem; margin-left: 8px; }
+
+.lp-cta {
+  background: var(--acid);
+  color: #0A0B08;
+  border: 1px solid var(--acid);
+  padding: 11px 22px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s;
+}
+.lp-cta:hover { background: #DFFF4D; }
+.lp-cta-sm { padding: 7px 14px; font-size: 0.58rem; }
+.lp-cta-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-lit);
+  display: inline-flex; align-items: center;
+}
+.lp-cta-ghost:hover { border-color: var(--acid); color: var(--acid); background: transparent; }
+
+/* hero */
+.lp-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+  gap: 56px;
+  align-items: center;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 96px 28px 72px;
+}
+.lp-eyebrow {
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  color: var(--acid-dim);
+  margin-bottom: 22px;
+}
+.lp-h1 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.7rem, 4.2vw, 3.1rem);
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.lp-h1-acid { color: var(--acid); }
+.lp-sub {
+  font-family: var(--font-body);
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 46ch;
+  margin: 22px 0 34px;
+}
+.lp-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* signature: decrypting position card */
+.lp-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-lit);
+  padding: 22px 22px 18px;
+}
+.lp-card-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.lp-card-badge {
+  color: var(--mint);
+  background: var(--mint-bg);
+  padding: 3px 8px;
+  font-weight: 700;
+}
+.lp-card-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lp-card-label { font-size: 0.54rem; letter-spacing: 0.12em; color: var(--text-secondary); }
+.lp-card-value {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  transition: color 0.3s;
+}
+.lp-card-value.revealed { color: var(--mint); }
+.lp-card-decrypt {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  background: rgba(200, 255, 0, 0.07);
+  border: 1px solid rgba(200, 255, 0, 0.35);
+  color: var(--acid);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: background 0.15s;
+}
+.lp-card-decrypt:hover { background: rgba(200, 255, 0, 0.14); }
+.lp-card-caption {
+  margin-top: 12px;
+  font-size: 0.56rem;
+  color: var(--text-secondary);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+/* mechanics */
+.lp-mech {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.lp-mech-item {
+  background: var(--bg-panel);
+  padding: 34px 28px 38px;
+}
+.lp-mech-tag {
+  display: inline-block;
+  font-size: 0.62rem;
+  color: var(--acid);
+  border: 1px solid rgba(200, 255, 0, 0.3);
+  padding: 4px 9px;
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+}
+.lp-mech-item p {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* liquidation flow */
+.lp-liq {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 72px 28px;
+}
+.lp-h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  margin-bottom: 34px;
+}
+.lp-liq-flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.lp-liq-step {
+  border-left: 2px solid var(--acid-dim);
+  padding-left: 18px;
+}
+.lp-liq-n {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--acid);
+  margin-bottom: 10px;
+}
+.lp-liq-step p {
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* footer */
+.lp-foot {
+  border-top: 1px solid var(--border);
+  padding: 40px 28px 56px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.lp-foot-contracts { display: flex; flex-direction: column; gap: 10px; }
+.lp-foot-contracts a {
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+.lp-foot-contracts a:hover { color: var(--acid); }
+.lp-foot-contracts a span { color: var(--text-dim); margin-left: 10px; word-break: break-all; }
+.lp-foot-note {
+  margin-top: 26px;
+  font-size: 0.56rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 920px) {
+  .lp-hero { grid-template-columns: 1fr; padding-top: 56px; gap: 40px; }
+  .lp-mech { grid-template-columns: 1fr; }
+  .lp-liq-flow { grid-template-columns: 1fr; gap: 28px; }
+  .lp-bar-price { display: none; }
+}
