@@ -16,15 +16,17 @@ const deploy: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   // Insurance fund = deployer for testnet
   const insurance = deployer;
 
-  // ── 1. Pre-compute PerpEngine address (resolves circular dependency) ──
+  // ── 1. Pre-compute LiquidationEngine + PerpEngine addresses (circular deps) ──
   const nonce = await ethers.provider.getTransactionCount(deployer);
+  const liqEngineAddr = ethers.getCreateAddress({ from: deployer, nonce: nonce + 1 });
   const engineAddr = ethers.getCreateAddress({ from: deployer, nonce: nonce + 2 });
+  console.log("Pre-computed LiquidationEngine address:", liqEngineAddr);
   console.log("Pre-computed PerpEngine address:", engineAddr);
 
   // ── 2. Deploy PerpVault ──
   const vault = await deploy("PerpVault", {
     from: deployer,
-    args: [CUSDT_ADDRESS, engineAddr],
+    args: [CUSDT_ADDRESS, engineAddr, liqEngineAddr],
     log: true,
     waitConfirmations: 1,
   });
@@ -38,6 +40,9 @@ const deploy: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     waitConfirmations: 1,
   });
   console.log("LiquidationEngine:", liqEngine.address);
+  if (liqEngine.address.toLowerCase() !== liqEngineAddr.toLowerCase()) {
+    throw new Error(`LiqEngine address mismatch: expected ${liqEngineAddr}, got ${liqEngine.address}`);
+  }
 
   // ── 4. Deploy PerpEngine (must land at engineAddr) ──
   const engine = await deploy("PerpEngine", {

@@ -14,7 +14,7 @@ import { PERP_ENGINE_ABI } from "./abis.js";
 // Run: npx tsx src/privacyCheck.ts
 
 const RPC_URL = process.env.SEPOLIA_RPC_URL ?? "https://sepolia.drpc.org";
-const ENGINE = (process.env.PERP_ENGINE_ADDRESS ?? "0xF07a3979f6D222b58b2081530F07347d0f79be5c") as `0x${string}`;
+const ENGINE = (process.env.PERP_ENGINE_ADDRESS ?? "0x4A9bf7E973F2693DB724135F8cfD04b3F5BbC691") as `0x${string}`;
 const POSITION_ID = BigInt(process.env.POSITION_ID ?? "0");
 
 function makeSdk(privateKey: `0x${string}`) {

@@ -150,8 +150,8 @@ contract LiquidationEngine is ZamaEthereumConfig {
         FHE.allowTransient(encKeeperFee, address(vault));
         FHE.allowTransient(encInsuranceFee, address(vault));
 
-        vault.releaseMargin(msg.sender, encKeeperFee);
-        vault.releaseMargin(insuranceFund, encInsuranceFee);
+        vault.payOut(msg.sender, encKeeperFee);
+        vault.payOut(insuranceFund, encInsuranceFee);
 
         emit LiquidationExecuted(positionId, msg.sender, keeperFeeAmt, insuranceFeeAmt);
     }

@@ -26,9 +26,9 @@ What stays public: position direction, leverage, open/closed status, and the exi
 
 | Contract | Address |
 |---|---|
-| PerpVault | `0x9EA7ae651A7BC2DEfCE2e61C96Ebac46b666bd24` |
-| PerpEngine | `0xF07a3979f6D222b58b2081530F07347d0f79be5c` |
-| LiquidationEngine | `0x115eb5Dbf37b1e45B3c6B0f8303A11D05Ddb07B7` |
+| PerpVault | `0x9B4FA284EAfA4e582237EBa48892Efa70e6BF69A` |
+| PerpEngine | `0x4A9bf7E973F2693DB724135F8cfD04b3F5BbC691` |
+| LiquidationEngine | `0x90787e07D332b933DfBFbef848Fe88E872D6eCCb` |
 | cUSDT (ERC-7984) | `0x4E7B06D78965594eB5EF5414c357ca21E1554491` |
 | Chainlink ETH/USD | `0x694AA1769357215DE4FAC081bf1f309aDC325306` |
 
@@ -62,7 +62,7 @@ npm run dev
 3. Open a long or short — margin and size are encrypted in the browser, one ZK proof covers both
 4. Position appears with redacted values; decrypt via the Zama KMS to reveal your own numbers
 5. PNL column computes live unrealized PnL after a single decrypt
-6. Close — encrypted PnL settles on-chain into your vault margin; withdraw to your wallet
+6. Close — encrypted PnL settles on-chain and pays out straight to your wallet
 7. Open a 50x position to watch the keeper liquidate it (margin ratio 2% < 5% maintenance)
 
 ## Verify privacy yourself

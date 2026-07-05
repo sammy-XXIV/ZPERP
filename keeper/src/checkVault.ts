@@ -4,7 +4,7 @@ import { PERP_ENGINE_ABI } from "./abis.js";
 import { parseAbi } from "viem";
 
 // One-off: verify close settled PnL into vault margin for the keeper wallet.
-const VAULT = "0x9EA7ae651A7BC2DEfCE2e61C96Ebac46b666bd24" as `0x${string}`;
+const VAULT = "0x9B4FA284EAfA4e582237EBa48892Efa70e6BF69A" as `0x${string}`;
 
 async function main() {
   const [, , isOpen] = await publicClient.readContract({

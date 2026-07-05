@@ -10,6 +10,7 @@ import "./interfaces/IERC7984.sol";
 contract PerpVault is ZamaEthereumConfig {
     IERC7984 public immutable cUSDT;
     address public immutable engine;
+    address public immutable liquidationEngine;
 
     // encrypted margin balance per user
     mapping(address => euint64) internal _margins;
@@ -18,6 +19,7 @@ contract PerpVault is ZamaEthereumConfig {
     event Withdrawn(address indexed user);
 
     error OnlyEngine();
+    error OnlyAuthorized();
     error InsufficientMargin();
 
     modifier onlyEngine() {
@@ -25,9 +27,15 @@ contract PerpVault is ZamaEthereumConfig {
         _;
     }
 
-    constructor(address _cUSDT, address _engine) {
+    modifier onlyAuthorized() {
+        if (msg.sender != engine && msg.sender != liquidationEngine) revert OnlyAuthorized();
+        _;
+    }
+
+    constructor(address _cUSDT, address _engine, address _liquidationEngine) {
         cUSDT = IERC7984(_cUSDT);
         engine = _engine;
+        liquidationEngine = _liquidationEngine;
     }
 
     /// @dev User deposits encrypted cUSDT margin. Amount encrypted client-side.
@@ -96,13 +104,20 @@ contract PerpVault is ZamaEthereumConfig {
         FHE.allowTransient(locked, msg.sender);
     }
 
-    /// @dev Called by engine to return margin after close/liquidation
-    function releaseMargin(address user, euint64 amount) external onlyEngine {
+    /// @dev Credit margin back to the user's vault balance (kept for pre-funded flows)
+    function releaseMargin(address user, euint64 amount) external onlyAuthorized {
         euint64 current = _margins[user];
         if (!FHE.isInitialized(current)) current = FHE.asEuint64(0);
         _margins[user] = FHE.add(current, amount);
         FHE.allowThis(_margins[user]);
         FHE.allow(_margins[user], user);
+    }
+
+    /// @dev Pay funds straight to the user's wallet — used on close (settled payout)
+    ///      and for liquidation fees, so no separate withdraw step is needed.
+    function payOut(address user, euint64 amount) external onlyAuthorized {
+        FHE.allowTransient(amount, address(cUSDT));
+        cUSDT.confidentialTransfer(user, amount);
     }
 
     function marginOf(address user) external view returns (euint64) {

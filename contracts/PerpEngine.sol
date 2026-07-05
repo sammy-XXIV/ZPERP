@@ -141,8 +141,9 @@ contract PerpEngine is ZamaEthereumConfig {
         euint64 loss = FHE.select(FHE.le(delta, pos.margin), delta, pos.margin);
         euint64 payout = FHE.select(gained, FHE.add(pos.margin, delta), FHE.sub(pos.margin, loss));
 
+        // pay straight to the owner's wallet — no separate withdraw step
         FHE.allowTransient(payout, address(vault));
-        vault.releaseMargin(pos.owner, payout);
+        vault.payOut(pos.owner, payout);
     }
 
     function _getPrice() internal view returns (uint64) {
