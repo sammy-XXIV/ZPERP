@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, usePublicClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useEncrypt } from "@zama-fhe/react-sdk";
 import { ENGINE_ABI, VAULT_ABI, CUSDT_ABI, USDT_ABI } from "../abis";
@@ -28,8 +29,18 @@ export function TradePanel() {
   const [toast, setToast] = useState<string | null>(null);
 
   const engineReady = !!ADDRESSES.engine;
+  const queryClient = useQueryClient();
   const { writeContract, data: txHash, isPending } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+
+  // after any tx confirms, refetch all contract reads so encrypted handles are
+  // never stale; cached decryptions of unchanged handles stay valid (immutable)
+  useEffect(() => {
+    if (!isConfirmed) return;
+    queryClient.invalidateQueries({
+      predicate: (q) => ["readContract", "readContracts", "balance"].includes(q.queryKey[0] as string),
+    });
+  }, [isConfirmed, queryClient]);
 
   // ERC-7984 has no allowance — the vault must be an approved operator to pull deposits.
   // Polled so the button flips as soon as the approval tx mines.
@@ -87,6 +98,9 @@ export function TradePanel() {
         args: [address, FAUCET_AMOUNT],
       });
       await publicClient.waitForTransactionReceipt({ hash: wrapTx });
+      queryClient.invalidateQueries({
+        predicate: (q) => ["readContract", "readContracts", "balance"].includes(q.queryKey[0] as string),
+      });
       showToast("10,000 cUSDT received");
     } catch (e) {
       showToast(e instanceof Error ? e.message.slice(0, 60) : "Faucet failed");

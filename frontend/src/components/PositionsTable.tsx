@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useAccount, useWriteContract } from "wagmi";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useUserPositions } from "../hooks/usePositions";
 import { useEthPrice } from "../hooks/useEthPrice";
 import { EncryptedValue } from "./EncryptedValue";
@@ -14,7 +15,17 @@ export function PositionsTable() {
   const { address } = useAccount();
   const { positions } = useUserPositions(address);
   const { price: markPrice } = useEthPrice();
-  const { writeContract } = useWriteContract();
+  const queryClient = useQueryClient();
+  const { writeContract, data: txHash } = useWriteContract();
+  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+
+  // refetch handles as soon as a close confirms so the table never shows stale state
+  useEffect(() => {
+    if (!isConfirmed) return;
+    queryClient.invalidateQueries({
+      predicate: (q) => ["readContract", "readContracts", "balance"].includes(q.queryKey[0] as string),
+    });
+  }, [isConfirmed, queryClient]);
 
   function closePosition(id: bigint) {
     writeContract({
