@@ -65,6 +65,27 @@ npm run dev
 6. Close — encrypted PnL settles on-chain into your vault margin; withdraw to your wallet
 7. Open a 50x position to watch the keeper liquidate it (margin ratio 2% < 5% maintenance)
 
+## Verify privacy yourself
+
+`keeper/src/privacyCheck.ts` proves the confidentiality model against a live position:
+a freshly generated wallet asks the Zama KMS to decrypt position #0 and is denied by the
+ACL; the position owner's wallet makes the same request and receives the plaintext values.
+
+```bash
+cd keeper && npm install
+npx tsx src/privacyCheck.ts
+# ...
+# [1/2] outsider 0x8aBd... (random wallet, no ACL) requests decryption...
+#   DENIED by KMS
+# [2/2] ACL-allowed wallet 0x518A... requests decryption...
+#   margin: 20000000  size: 113891  entry: 175771660000
+# PRIVACY CHECK PASSED
+```
+
+On Etherscan you can confirm the other half: `getPosition` returns opaque 32-byte handles,
+and openPosition calldata contains only ciphertexts and a ZK proof — no amounts appear
+anywhere on-chain in plaintext.
+
 ## Trust model
 
 - Liquidation values are verified on-chain: `executeLiquidation` accepts only KMS-signed cleartexts (`FHE.checkSignatures`), so no party can forge a liquidation — execution is permissionless and the executor earns the fee

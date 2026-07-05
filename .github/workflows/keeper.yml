@@ -30,7 +30,7 @@ jobs:
         working-directory: keeper
         env:
           KEEPER_PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY }}
-          SEPOLIA_RPC_URL: https://sepolia.drpc.org
+          SEPOLIA_RPC_URL: https://ethereum-sepolia-rpc.publicnode.com
           PERP_ENGINE_ADDRESS: ${{ vars.PERP_ENGINE_ADDRESS }}
           LIQUIDATION_ENGINE_ADDRESS: ${{ vars.LIQUIDATION_ENGINE_ADDRESS }}
           MAX_SCAN: "500"
