@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDecryptValues, useGrantPermit, useHasPermit } from "@zama-fhe/react-sdk";
 import { useAccount } from "wagmi";
 import { ADDRESSES } from "../wagmi";
 import { useElapsed } from "../hooks/useElapsed";
+
+// revealed values re-hide after this long; hiding also drops the cached
+// plaintext so the next reveal is a fresh KMS decryption
+export const REVEAL_MS = 30_000;
 
 type Props = {
   handle: `0x${string}`;
@@ -40,6 +45,23 @@ export function EncryptedValue({ handle, format, decimals = 6, contract = ADDRES
 
   const raw = data?.[handle] !== undefined ? BigInt(data[handle] as string | number | bigint) : null;
   const formatted = raw !== null ? (format ? format(raw) : defaultFormat(raw, decimals)) : null;
+
+  const queryClient = useQueryClient();
+  function hide() {
+    setShouldDecrypt(false);
+    // forget the plaintext — next reveal must round-trip the KMS again
+    queryClient.removeQueries({
+      predicate: (q) => JSON.stringify(q.queryKey).includes(handle.toLowerCase()) || JSON.stringify(q.queryKey).includes(handle),
+    });
+  }
+
+  // auto re-hide after REVEAL_MS
+  useEffect(() => {
+    if (!shouldDecrypt || raw === null) return;
+    const t = setTimeout(hide, REVEAL_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldDecrypt, raw]);
 
   function handleDecryptClick() {
     if (!hasPermit) grantPermit([contract]);
@@ -102,7 +124,14 @@ export function EncryptedValue({ handle, format, decimals = 6, contract = ADDRES
 
   return (
     <span className="enc-val">
-      <span className="enc-revealed">{formatted ?? "—"}</span>
+      <span
+        className="enc-revealed"
+        onClick={hide}
+        title="Click to re-encrypt (auto-hides after 30s)"
+        style={{ cursor: "pointer" }}
+      >
+        {formatted ?? "—"}
+      </span>
     </span>
   );
 }

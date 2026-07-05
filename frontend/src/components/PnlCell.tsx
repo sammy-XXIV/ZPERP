@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDecryptValues, useGrantPermit, useHasPermit } from "@zama-fhe/react-sdk";
 import { useAccount } from "wagmi";
 import { ADDRESSES } from "../wagmi";
 import { useEthPrice } from "../hooks/useEthPrice";
 import { useElapsed } from "../hooks/useElapsed";
+import { REVEAL_MS } from "./EncryptedValue";
 
 type Props = {
   sizeHandle: `0x${string}`;       // ETH quantity, 6 decimals
@@ -34,6 +36,27 @@ export function PnlCell({ sizeHandle, entryPriceHandle, isLong }: Props) {
   );
   const sec = useElapsed(isLoading);
 
+  const queryClient = useQueryClient();
+  const hasValues = data?.[sizeHandle] !== undefined && data?.[entryPriceHandle] !== undefined;
+
+  function hide() {
+    setGo(false);
+    queryClient.removeQueries({
+      predicate: (q) => {
+        const key = JSON.stringify(q.queryKey);
+        return key.includes(sizeHandle) || key.includes(entryPriceHandle);
+      },
+    });
+  }
+
+  // auto re-hide after REVEAL_MS, matching EncryptedValue behavior
+  useEffect(() => {
+    if (!go || !hasValues) return;
+    const t = setTimeout(hide, REVEAL_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [go, hasValues]);
+
   function start() {
     if (!hasPermit) grantPermit([ADDRESSES.engine]);
     setGo(true);
@@ -61,7 +84,11 @@ export function PnlCell({ sizeHandle, entryPriceHandle, isLong }: Props) {
   const color = pnl >= 0 ? "var(--mint)" : "var(--red)";
 
   return (
-    <span style={{ color }}>
+    <span
+      style={{ color, cursor: "pointer" }}
+      onClick={hide}
+      title="Click to re-encrypt (auto-hides after 30s)"
+    >
       {pnl >= 0 ? "+" : "−"}${Math.abs(pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   );
