@@ -67,24 +67,11 @@ npm run dev
 
 ## Verify privacy yourself
 
-`keeper/src/privacyCheck.ts` proves the confidentiality model against a live position:
-a freshly generated wallet asks the Zama KMS to decrypt position #0 and is denied by the
-ACL; the position owner's wallet makes the same request and receives the plaintext values.
+All three contracts are verified on Sepolia Etherscan — no trust in this repo required:
 
-```bash
-cd keeper && npm install
-npx tsx src/privacyCheck.ts
-# ...
-# [1/2] outsider 0x8aBd... (random wallet, no ACL) requests decryption...
-#   DENIED by KMS
-# [2/2] ACL-allowed wallet 0x518A... requests decryption...
-#   margin: 20000000  size: 113891  entry: 175771660000
-# PRIVACY CHECK PASSED
-```
-
-On Etherscan you can confirm the other half: `getPosition` returns opaque 32-byte handles,
-and openPosition calldata contains only ciphertexts and a ZK proof — no amounts appear
-anywhere on-chain in plaintext.
+1. Open [PerpEngine](https://sepolia.etherscan.io/address/0x4A9bf7E973F2693DB724135F8cfD04b3F5BbC691#readContract) → Read Contract → `getPosition(0)`. The margin, size, and entry price come back as opaque 32-byte ciphertext handles — that is all the chain stores.
+2. Open any `openPosition` transaction on that contract. The calldata contains only ciphertext handles and a ZK input proof. No amount appears in plaintext anywhere: not in calldata, not in storage, not in events.
+3. Decryption rights are governed by Zama's on-chain ACL. The engine grants access only to the position owner and the liquidation engine (see the `FHE.allow` calls in the verified source). Connect any other wallet in the app and press decrypt — the KMS refuses the request.
 
 ## Trust model
 
