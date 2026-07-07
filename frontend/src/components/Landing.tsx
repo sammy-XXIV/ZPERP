@@ -131,10 +131,12 @@ export function Landing() {
           </p>
         </div>
         <div className="lp-mech-item">
-          <span className="lp-mech-tag">ZK input proof</span>
+          <span className="lp-mech-tag">client-side FHE</span>
           <p>
-            Amounts are encrypted in your browser. A zero-knowledge proof binds
-            each ciphertext to the contract before it is accepted on-chain.
+            Amounts are encrypted in your browser under the network's FHE key —
+            the plaintext never leaves your machine. An input proof binds each
+            ciphertext to you and this contract, so ciphertexts can't be forged
+            or replayed.
           </p>
         </div>
         <div className="lp-mech-item">

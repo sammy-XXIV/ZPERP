@@ -8,7 +8,7 @@ Live on Sepolia. Margin is confidential USDT (ERC-7984); the market is ETH/USD p
 
 - Margin, position size, and entry price are stored as `euint64` — visible to no one except the position owner (via KMS decryption) and the permissioned liquidation keeper
 - PnL settlement happens fully homomorphically on-chain: `payout = margin +/- size * |mark - entry|` computed with `FHE.select`/`FHE.mul` — the payout amount is never revealed
-- Deposits and withdrawals move confidential ERC-7984 tokens; amounts are encrypted client-side with ZK input proofs
+- Deposits and withdrawals move confidential ERC-7984 tokens; amounts are FHE-encrypted client-side, each with an input proof binding it to the contract
 
 What stays public: position direction, leverage, open/closed status, and the existence of transactions.
 
@@ -59,7 +59,7 @@ npm run dev
 
 1. Connect wallet (Sepolia) — the in-app faucet mints mock USDT and wraps it to cUSDT
 2. Approve cUSDT (one-time operator approval for the vault)
-3. Open a long or short — margin and size are encrypted in the browser, one ZK proof covers both
+3. Open a long or short — margin and size are FHE-encrypted in the browser, one input proof covers both
 4. Position appears with redacted values; decrypt via the Zama KMS to reveal your own numbers
 5. PNL column computes live unrealized PnL after a single decrypt
 6. Close — encrypted PnL settles on-chain and pays out straight to your wallet
@@ -70,7 +70,7 @@ npm run dev
 All three contracts are verified on Sepolia Etherscan — no trust in this repo required:
 
 1. Open [PerpEngine](https://sepolia.etherscan.io/address/0x4A9bf7E973F2693DB724135F8cfD04b3F5BbC691#readContract) → Read Contract → `getPosition(0)`. The margin, size, and entry price come back as opaque 32-byte ciphertext handles — that is all the chain stores.
-2. Open any `openPosition` transaction on that contract. The calldata contains only ciphertext handles and a ZK input proof. No amount appears in plaintext anywhere: not in calldata, not in storage, not in events.
+2. Open any `openPosition` transaction on that contract. The calldata contains only FHE ciphertext handles and an input proof. No amount appears in plaintext anywhere: not in calldata, not in storage, not in events.
 3. Decryption rights are governed by Zama's on-chain ACL. The engine grants access only to the position owner and the liquidation engine (see the `FHE.allow` calls in the verified source). Connect any other wallet in the app and press decrypt — the KMS refuses the request.
 
 ## Trust model
