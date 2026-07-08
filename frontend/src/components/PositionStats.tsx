@@ -66,7 +66,7 @@ export function PositionStats({ marginHandle, sizeHandle, entryPriceHandle, isLo
     return (
       <>
         <td><button className="btn btn-ghost btn-sm" onClick={start} title="Decrypt to compute PnL and liq price">show</button></td>
-        <td style={{ color: "var(--text-dim)" }}>——</td>
+        <td><button className="btn btn-ghost btn-sm" onClick={start} title="Decrypt to compute PnL and liq price">show</button></td>
       </>
     );
   }
