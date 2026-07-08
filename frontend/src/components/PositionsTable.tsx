@@ -4,7 +4,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagm
 import { useUserPositions } from "../hooks/usePositions";
 import { useEthPrice } from "../hooks/useEthPrice";
 import { EncryptedValue } from "./EncryptedValue";
-import { PnlCell } from "./PnlCell";
+import { PositionStats } from "./PositionStats";
 import { ENGINE_ABI } from "../abis";
 import { ADDRESSES } from "../wagmi";
 
@@ -61,6 +61,7 @@ export function PositionsTable() {
                   <th>ENTRY PRICE</th>
                   <th>MARK PRICE</th>
                   <th>PNL</th>
+                  <th>LIQ PRICE</th>
                   <th>ACTION</th>
                 </tr>
               </thead>
@@ -76,9 +77,12 @@ export function PositionsTable() {
                     <td style={{ color: "var(--text-primary)" }}>
                       {markPrice ? `$${markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "——"}
                     </td>
-                    <td>
-                      <PnlCell sizeHandle={pos.sizeHandle} entryPriceHandle={pos.entryPriceHandle} isLong={pos.isLong} />
-                    </td>
+                    <PositionStats
+                      marginHandle={pos.marginHandle}
+                      sizeHandle={pos.sizeHandle}
+                      entryPriceHandle={pos.entryPriceHandle}
+                      isLong={pos.isLong}
+                    />
                     <td>
                       <button className="btn-sm" onClick={() => closePosition(pos.id)}>Close</button>
                     </td>
