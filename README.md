@@ -1,8 +1,20 @@
 # ZPERP — Confidential Perpetual DEX on Zama fhEVM
 
-A perpetual futures exchange where position sizes, margins, entry prices, and PnL are encrypted on-chain using Zama's fhEVM. Built for the Zama Developer Program Season 3.
+A perp DEX where your liquidation price can't be hunted — because it doesn't exist as public information.
 
-Live on Sepolia. Margin is confidential USDT (ERC-7984); the market is ETH/USD priced by Chainlink.
+Live: [zperp.vercel.app](https://zperp.vercel.app) · Sepolia · Built for the Zama Developer Program Season 3.
+
+## The problem
+
+On every transparent perp DEX, margin, size, and entry are on-chain — which means anyone can *compute* exactly where a position liquidates. Bots cluster these levels, price gets pushed into them, positions cascade, and the hunters collect. Stop hunts aren't a conspiracy theory on-chain; they're arithmetic on public data. And it doesn't end there: the whole book is naked — every profitable trader is free alpha to copy, every large entry is a signal to front-run. On-chain perps made trading trustless by making the trader the target.
+
+## The solution
+
+ZPERP encrypts margin, size, and entry price on-chain with Zama's FHE — a liquidation price can't be computed by anyone, because the inputs aren't there. It exists only as a derivation from three ciphertexts that the owner's signature alone can decrypt. You see your own level; bots see three opaque handles. An observer learns direction and leverage — nothing huntable, nothing copyable.
+
+The hard part isn't hiding data — it's keeping a risk engine functioning over data nobody can see. That's what FHE makes possible: PnL settles fully homomorphically, and liquidations execute trustlessly against KMS-signed values verified on-chain. Solvency without surveillance.
+
+The market is ETH/USD priced by Chainlink; collateral is confidential USDT (ERC-7984).
 
 ## What is confidential
 
